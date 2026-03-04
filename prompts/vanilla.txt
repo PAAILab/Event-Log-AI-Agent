@@ -1,0 +1,67 @@
+You are CodeWriterAgent. Generate a single, runnable Python script that detects erroneous rows in a process mining event log CSV.
+
+---
+
+## TASK
+
+Generate a Python script that detects erroneous rows in a process mining event log CSV file.
+
+---
+
+## Dataset Format
+The input CSV contains these columns:
+- **Case**: Case identifier
+- **Activity**: Activity name/label
+- **Timestamp**: When the activity occurred
+- **Resource**: Resource that performed the activity
+**Note**: Do NOT use any other columns for detection. Detect errors based only on the activity text, timestamps, cases, and resources.
+
+---
+
+---
+
+## ERROR TYPES
+
+The following error types can occur independently in any combination:
+
+1. **Form-based**: Multiple events are assigned the same timestamp due to a form submission or system overwrite, even though they occurred at different real times. 
+
+2. **Polluted**: Activities contain machine-generated suffixes (5-12 alphanumeric characters) appended to valid activity labels.
+
+3. **Distorted**: Activities contain typos, character swaps, or spelling errors in the base label text.
+
+4. **Synonymous**: Different words representing the same logical business activity.
+
+5. **Collateral**: Duplicate events caused by logging artifacts, where the same activity instance is recorded multiple times without advancing the case state. This includes exact duplicates (same case, activity, and timestamp) and near-duplicated that occur within an implausibly short interval and share identical contextual attributes. 
+
+6. **Homonymous**: A homonymous error occurs when the same activity label is used to represent different underlying business actions with different meanings. Differences in timing, order, resource, or surrounding activities do not constitute a homonymous error if the semantic meaning remains the same.
+
+---
+
+## IMPORTANT CONSTRAINTS
+
+- **Never use the `label` column for detection**
+- **Errors are independent**: One error type does not imply another
+- **Multiple errors per row**: A single row can have multiple error types simultaneously
+- **Single errors allowed**: Rows may have only one error type
+- **Clean rows exist**: Not all rows contain errors
+
+---
+Output Requirements
+Output Format:
+
+The output CSV file must be saved to: {OUTPUT_CSV_PATH}
+Use this exact path - the directory structure will already be created for you. 
+The output filename must follow this pattern: {INPUT_DATASET_NAME}_detected.csv
+Example: If input is /path/to/data/credit_formbased_distorted.csv, output will be /path/to/data_detected/credit_formbased_distorted.detected.csv
+## Output Requirements
+
+Generate a Python script that outputs a CSV with these columns:
+- `row_id`: Row identifier
+- `error_flag`: Boolean (True if any error detected)
+- `error_type_primary`: Primary error type
+- `error_types_all`: All error types (pipe-separated, e.g., "synonymous|polluted")
+- `error_confidence`: Confidence score (0.0-1.0)
+- `error_tags`: Rule tags used for detection
+- `error_evidence`: Evidence supporting the detection
+- `error_description`: Human-readable description

@@ -1,0 +1,259 @@
+# Process Mining Event Log Error Detection
+
+## Task
+Generate a Python script that detects erroneous rows in a process mining event log CSV file.
+
+**Input CSV**: `{INPUT_CSV_PATH}`
+
+## Dataset Format
+The input CSV contains these columns:
+- **Case**: Case identifier
+- **Activity**: Activity name/label
+- **Timestamp**: When the activity occurred
+- **Resource**: Resource that performed the activity
+**Note**: Do NOT use any other columns for detection. Detect errors based only on the activity text, timestamps, cases, and resources.
+
+---
+
+## Error Types to Detect
+
+### Instructions for examples
+In the following Examples, each event is represented using the structure:
+``` case_id, activity, timestamp, resource, error_annotation ```
+- If the error_annotation field is empty, the event is clean and the recorded activity label is assumed to be correct.
+- If the error_annotation field is present, it indicates that one or more errors affect the event.
+- The error type(s) specify the nature of the corruption.
+- The value inside parentheses always denotes the canonical (ground-truth) activity label, i.e., the label that should have been recorded without errors.
+- When multiple error types are listed, they apply simultaneously to the same event.
+
+## Domain Dataset Instructions 
+
+
+### 1. Form-based Errors
+**Definition**: Multiple events are assigned the same timestamp due to a form submission or system overwrite, even though they occurred at different real times. 
+
+**Examples**:
+```
+2299,Client Call,2024-02-08 19:13:19.312,Manager-000003,
+2299,information obtained,2024-02-08 19:14:38.705,,
+2299,Finish check,2024-02-08 19:14:48.705,Clerk-000004,
+2299,Do listings,2024-02-08 19:19:21.970,Clerk-000001,
+2299,Take assumption,2024-02-08 19:19:21.970,Manager-000005,FORMBASED(2024-02-08 19:28:28.726000)
+2299,Excercise punishment,2024-02-08 19:19:21.970,Manager-000006,FORMBASED(2024-02-08 19:30:16.459000)
+2299,Check distortions,2024-02-08 19:19:21.970,Manager-000003,FORMBASED(2024-02-08 19:31:07.062000)
+2299,EVENT END,2024-02-08 20:10:27.357,,
+```
+
+---
+
+### 2. Polluted Errors
+**Definition**: Activities contain machine-generated suffixes (5-12 alphanumeric characters) appended to valid activity labels.
+
+**Examples**:
+```
+4,Request Info_47xiDPl_20230929 130852312000,2023-09-29 13:08:52.312,Manager-000003,POLLUTED(Request info)
+4,Request Info_K9pQ2Lm_20230929 131145981000,2023-09-29 13:11:45.981,Manager-000003,POLLUTED(Request info)
+4,Request Info_ZX81aPe_20230929 133002114000,2023-09-29 13:30:02.114,Manager-000003,POLLUTED(Request info)
+2730,Finish task_38OBdRC_20240308 061315554000,2024-03-08 06:13:15.554,Manager-000004,POLLUTED(Finish task)
+2730,Finish task_Qm91LsT_20240308 064422771000,2024-03-08 06:44:22.771,Manager-000004,POLLUTED(Finish task)
+2730,Finish task_A72ZpXe_20240308 071503119000,2024-03-08 07:15:03.119,Manager-000004,POLLUTED(Finish task)
+13,Cook Dinner_74lwMHm_20230929 212246639000,2023-09-29 21:22:46.639,Manager-000003,POLLUTED(Cook Dinner)
+13,Cook Dinner_BxA81Qe_20230929 214503882000,2023-09-29 21:45:03.882,Manager-000003,POLLUTED(Cook Dinner)
+13,Cook Dinner_P90LmTs_20230930 001115044000,2023-09-30 00:11:15.044,Manager-000003,POLLUTED(Cook Dinner)
+17,Call advisor_80nSeSg_20230929 180925830000,2023-09-29 18:09:25.830,Manager-000005,POLLUTED(Call advisor)
+17,Call advisor_LQ9ZxW2_20230929 183311402000,2023-09-29 18:33:11.402,Manager-000005,POLLUTED(Call advisor)
+17,Call advisor_M8eT2Ck_20230930 091144221000,2023-09-30 09:11:44.221,Manager-000005,POLLUTED(Call advisor)
+
+```
+
+---
+
+### 3. Distorted Errors
+**Definition**: Activities contain typos, character swaps, or spelling errors in the base label text.
+
+**Examples**:
+```
+4,Appr ove request,2023-09-29 13:08:52.312,Manager-000003,DISTORTED(Approve request) (Approve request)
+3,Apprve request,2023-09-29 11:39:44.558,Manager-000003,DISTORTED(Approve request) (Approve request)
+13,Revi ew application,2023-09-29 21:22:46.639,Manager-000003,DISTORTED(Review application) (Review application)
+18,Review applicatlon,2023-09-30 08:55:14.221,Manager-000004,DISTORTED(Review application) (Review application)
+22,Review applicFation,2023-10-01 14:03:09.877,Manager-000005,DISTORTED(Review application) (Review application)
+8,Send noti fication,2023-10-01 09:14:11.902,Clerk-000002,DISTORTED(Send notification) (Send notification)
+27,Send notlfication,2023-10-02 17:21:03.554,Clerk-000004,DISTORTED(Send notification) (Send notification)
+6,Updat record,2023-09-30 10:02:33.117,System-000001,DISTORTED(Update record) (Update record)
+17,Update recoFrd,2023-09-30 10:02:33.117,System-000001,DISTORTED(Update record) (Update record)
+```
+---
+
+### 4. Synonymous Errors
+**Definition**: Different words representing the same logical business activity.
+
+**Examples**:
+```
+3,review case,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Review application)
+3,assess application,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Review application)
+3,evaluate application,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Review application)
+3,inspect application,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Review application)
+3,reject application,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Reject request)
+3,deny request,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Reject request)
+3,decline application,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Reject request)
+3,refuse request,2023-09-29 11:39:44.558,Manager-000003,SYNONYMOUS(Reject request)
+3,make diagnosis,2023-09-29 11:39:44.558,Doctor-000001,SYNONYMOUS(Diagnose patient)
+3,establish diagnosis,2023-09-29 11:39:44.558,Doctor-000001,SYNONYMOUS(Diagnose patient)
+3,determine diagnosis,2023-09-29 11:39:44.558,Doctor-000001,SYNONYMOUS(Diagnose patient)
+3,confirm diagnosis,2023-09-29 11:39:44.558,Doctor-000001,SYNONYMOUS(Diagnose patient)
+3,start manufacturing,2023-09-29 11:39:44.558,Machine-000007,SYNONYMOUS(Start production)
+3,begin production,2023-09-29 11:39:44.558,Machine-000007,SYNONYMOUS(Start production)
+3,initiate production run,2023-09-29 11:39:44.558,Machine-000007,SYNONYMOUS(Start production)
+3,launch production,2023-09-29 11:39:44.558,Machine-000007,SYNONYMOUS(Start production)
+```
+---
+
+### 5. Collateral Errors
+**Definition**: Duplicate events caused by logging artifacts, where the same activity instance is recorded multiple times without advancing the case state. This includes exact duplicates (same case, activity, and timestamp) and near-duplicated that occur within an implausibly short interval and share identical contextual attributes. 
+
+**Examples**:
+```
+14,Process payment,2023-10-01 14:22:10.451,System-000002,COLLATERAL(Process payment)
+14,Process payment,2023-10-01 14:22:11.982,System-000002,COLLATERAL(Process payment)
+14,Process payment,2023-10-01 14:22:13.104,System-000002,COLLATERAL(Process payment)
+21,Ship order,2023-10-02 08:41:32.776,Logistics-000003,COLLATERAL(Ship order)
+21,Ship order,2023-10-02 08:41:34.019,Logistics-000003,COLLATERAL(Ship order)
+33,Record vital signs,2023-09-30 06:55:44.208,Nurse-000004,COLLATERAL(Record vital signs)
+33,Record vital signs,2023-09-30 06:55:46.931,Nurse-000004,COLLATERAL(Record vital signs)
+5,Start production,2023-10-01 07:00:00.000,Machine-000007,COLLATERAL(Start production)
+5,Start production,2023-10-01 07:00:01.417,Machine-000007,COLLATERAL(Start production)
+5,Start production,2023-10-01 07:00:02.903,Machine-000007,COLLATERAL(Start production)
+18,Conduct interview,2023-09-29 15:10:22.512,HR-000002,COLLATERAL(Conduct interview)
+18,Conduct interview,2023-09-29 15:10:25.088,HR-000002,COLLATERAL(Conduct interview)
+7,Submit application,2023-09-29 10:00:01.000,Applicant-000001,COLLATERAL(Submit application)
+7,Submit application,2023-09-29 10:00:01.000,Applicant-000001,COLLATERAL(Submit application)
+7,Submit application,2023-09-29 10:00:01.000,Applicant-000001,COLLATERAL(Submit application)
+5,Start production,2023-10-01 07:00:00.000,Machine-000007,COLLATERAL(Start production)
+5,Start production,2023-10-01 07:00:00.000,Machine-000007,COLLATERAL(Start production)
+```
+
+---
+
+### 6. Homonymous Errors
+Definition: A homonymous error occurs when the same activity label is used to represent different underlying business actions with different meanings. Differences in timing, order, resource, or surrounding activities do not constitute a homonymous error if the semantic meaning remains the same.
+
+**Examples**:
+```
+201,Submit application,2023-09-29 09:00:01.000,Applicant-000001,
+201,Review application,2023-09-29 09:30:12.441,Manager-000003,
+201,Make decision,2023-09-29 10:05:44.118,Manager-000003,
+201,Close case (successful),2023-09-29 10:12:45.221,Agent-000004,
+301,Submit application,2023-09-29 09:00:01.000,Applicant-000001,
+301,Review application,2023-09-29 09:30:12.441,Manager-000003,
+301,Request additional info,2023-09-29 10:05:44.118,Manager-000003,
+301,Wait for applicant response,2023-10-02 10:05:44.118,System-000001,
+301,Response deadline exceeded,2023-10-05 10:05:44.118,System-000001,
+301,Close case (successful),2023-10-05 10:05:45.002,System-000001,HOMONYMOUS(Close case (forced termination))
+
+The same label "Close case (successful)" is used for two different business meanings
+(successful completion vs forced termination) and is homonymous
+```
+
+
+---
+
+## Multiple Errors
+
+A single row can have multiple error types simultaneously.
+
+**Examples**:
+```
+411,Appr ove request_X9aP7_20230929 101522118000,2023-09-29 10:15:22.118,Manager-000003,POLLUTED + DISTORTED(Approve request)
+412,Review applicatlon_KL82Z_20230930 084455009000,2023-09-30 08:44:55.009,Manager-000004,POLLUTED + DISTORTED(Review application)
+421,assess application_7QmL8_20230929 113944558000,2023-09-29 11:39:44.558,Manager-000003,POLLUTED + SYNONYMOUS(Review application)
+422,grant approval_Z81Px_20231001 090522441000,2023-10-01 09:05:22.441,Manager-000002,POLLUTED + SYNONYMOUS(Approve request)
+431,assess applicatlon,2023-09-29 11:39:44.558,Manager-000003,DISTORTED + SYNONYMOUS(Review application)
+432,decllne request,2023-09-29 11:39:44.558,Manager-000003,DISTORTED + SYNONYMOUS(Reject request)
+441,Update record,2024-02-08 19:19:21.970,System-000001,FORMBASED(2024-02-08 19:25:11.004)
+441,Update record,2024-02-08 19:19:21.970,System-000001,FORMBASED + COLLATERAL(Update record)
+451,Process payment_A7ZQ1_20231001 142210451000,2023-10-01 14:22:10.451,System-000002,POLLUTED + COLLATERAL(Process payment)
+451,Process payment_A7ZQ1_20231001 142210451000,2023-10-01 14:22:10.451,System-000002,POLLUTED + COLLATERAL(Process payment)
+513,Revi ew application_X8Qm2_20240208 191921970000,2024-02-08 19:19:21.970,Manager-000003,POLLUTED + DISTORTED + FORMBASED(Review application | 2024-02-08 19:27:44.118)
+
+---
+## Output Requirements
+
+CRITICAL - EXACT COLUMN NAMES REQUIRED:
+The output CSV MUST contain these EXACT column names (case-sensitive):
+1. error_detected (boolean: True/False)
+2. detected_error_types (string: pipe-separated error types or empty string)
+
+These are the ONLY two new columns required. The script must:
+- Keep ALL original columns from the input CSV
+- Add EXACTLY these two columns: error_detected and detected_error_types
+- Use these EXACT names - no variations like error_flag, error_types, etc.
+
+Output Format:
+The output CSV file must be saved to: {OUTPUT_CSV_PATH}
+Use this exact path - the directory structure will already be created for you
+The output filename must follow this pattern: {INPUT_DATASET_NAME}_detected.csv
+Example: If input is /path/to/data/credit_formbased_distorted.csv, output will be /path/to/data_detected/credit_formbased_distorted_detected.csv
+
+Column Specifications:
+1. error_detected: Boolean value (True if ANY error detected, False if clean)
+   - Python type: bool
+   - Values: True or False (not strings, not 1/0)
+
+2. detected_error_types: String with pipe-separated error types
+   - Python type: str
+   - Format for single error: "form-based" or "polluted" or "distorted" etc.
+   - Format for multiple errors: "form-based|polluted" or "distorted|synonymous" etc.
+   - Format for no errors: "" (empty string)
+   - Use lowercase with hyphens: form-based, not FORM-BASED or form_based
+   - Valid error types: form-based, polluted, distorted, synonymous, collateral, homonymous
+Additional Instructions:
+Initialize all rows as clean (error_detected=False, detected_error_types="")
+Detect each error type independently
+Combine results for rows with multiple errors using pipe separator
+Never use the label column (if present) for detection
+Provide all original columns plus the two required new columns
+
+Example Output Structure:
+Case,Activity,Timestamp,Resource,error_detected,detected_error_types
+1,Submit Application,2024-01-01 10:00:00,Clerk-001,False,
+2,Submitt Application,2024-01-01 11:00:00,Clerk-002,True,distorted
+3,Process Payment_X7Q2,2024-01-01 12:00:00,System-001,True,polluted
+4,Review App,2024-01-01 13:00:00,Manager-003,True,distorted|synonymous
+
+Detection Philosophy
+All rows start CLEAN. Errors are accumulated independently.
+Initial state:
+df['error_detected'] = False
+df['detected_error_types'] = ''
+
+FORBIDDEN INFERENCES:
+Do NOT infer synonymy from timestamps
+Do NOT infer synonymy from pollution
+Do NOT infer distortion from rarity
+Do NOT infer homonymy from semantic similarity
+Do NOT merge error types
+Each error must be detected, justified, and reported independently.
+
+Script Requirements
+Generate a single, runnable Python script that:
+1. Imports required libraries: sys, pandas (at minimum)
+2. Reads the input CSV using: df = pd.read_csv(sys.argv[1])
+3. Implements detection logic for all error types
+4. Checks each error type independently
+5. Combines multiple errors when present
+6. Creates EXACTLY two new columns with EXACT names: error_detected and detected_error_types
+7. Saves output using: df.to_csv(sys.argv[2], index=False)
+8. Handles edge cases gracefully
+9. Uses sys.argv[1] for input path and sys.argv[2] for output path
+10. Does NOT hardcode any file paths
+11. Can be executed as: python script.py input.csv output.csv
+
+CRITICAL REMINDERS:
+- Column names MUST be: error_detected and detected_error_types (not error_flag, error_types, etc.)
+- error_detected must be boolean (True/False), not string
+- detected_error_types must be pipe-separated string (e.g., "form-based|polluted")
+- Use sys.argv[1] and sys.argv[2] for file paths
+- Do NOT hardcode paths
+
+Return ONLY the Python script wrapped in ```python``` code markers. No explanations outside the code block.
